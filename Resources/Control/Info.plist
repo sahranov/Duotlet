@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
+	<key>CFBundleDisplayName</key>
+	<string>Duotlet</string>
+	<key>CFBundleExecutable</key>
+	<string>DuotletControl</string>
+	<key>CFBundleIdentifier</key>
+	<string>to.maki.MacDuoPatched.Control</string>
+	<key>CFBundleName</key>
+	<string>Duotlet</string>
+	<key>CFBundlePackageType</key>
+	<string>XPC!</string>
+	<key>CFBundleShortVersionString</key>
+	<string>0.2.0</string>
+	<key>CFBundleVersion</key>
+	<string>2</string>
+	<key>DuotletAppGroup</key>
+	<string>group.app.duotlet.shared</string>
+	<key>DuotletContainingApp</key>
+	<string>to.maki.MacDuoPatched</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>26.0</string>
+	<key>NSExtension</key>
+	<dict>
+		<key>NSExtensionPointIdentifier</key>
+		<string>com.apple.widgetkit-extension</string>
+	</dict>
+</dict>
+</plist>
