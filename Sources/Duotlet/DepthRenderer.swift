@@ -38,6 +38,8 @@ final class DepthRenderer {
     private let pipeline: MTLRenderPipelineState
     private let blurProcessor: DepthBlur
     private var profile: AnimationProfile?
+    private let drawablePrefetch = DrawablePrefetch<CAMetalDrawable>()
+    private var reservedDrawable: CAMetalDrawable?
     private var texture: MTLTexture?
     private var screenSize: CGSize = .zero
     private var pixelScale: CGFloat = 2
@@ -83,6 +85,8 @@ final class DepthRenderer {
 
     /// A fresh layer for a new overlay window. Later frames go to this one.
     func makeLayer() -> CAMetalLayer {
+        drawablePrefetch.invalidate()
+        reservedDrawable = nil
         profile = AnimationProfile.enabled ? AnimationProfile() : nil
         let fresh = CAMetalLayer()
         configure(fresh)
@@ -378,6 +382,8 @@ final class DepthRenderer {
     }
 
     func release() {
+        drawablePrefetch.invalidate()
+        reservedDrawable = nil
         profile?.reportAfterCompletion()
         profile = nil
         texture = nil
@@ -386,6 +392,31 @@ final class DepthRenderer {
         // renderer must not keep that full-screen drawable pool alive idle.
         layer = CAMetalLayer()
         configure(layer)
+    }
+
+    /// Called before advancing motion, so unavailable display surfaces cannot
+    /// consume animation steps which the user will never see.
+    func prepareFrame() -> Bool {
+        if reservedDrawable != nil { return true }
+        requestDrawable()
+        reservedDrawable = drawablePrefetch.take()
+        return reservedDrawable != nil
+    }
+
+    private func requestDrawable() {
+        let target = layer
+        let profiling = profile != nil
+        drawablePrefetch.request {
+            let started = profiling ? CACurrentMediaTime() : 0
+            let drawable = target.nextDrawable()
+            if profiling {
+                let wait = CACurrentMediaTime() - started
+                if wait > 0.025 {
+                    Diagnostics.geometry.notice("profile background drawable wait: \(wait * 1000, format: .fixed(precision: 2)) ms")
+                }
+            }
+            return drawable
+        }
     }
 
     /// - Parameter corners: the picture corners projected onto the screen, in
@@ -399,23 +430,15 @@ final class DepthRenderer {
         dimReach: Double,
         maxBlurRadius: Double,
         maxDim: Double,
-        opacity: Double = 1
+        opacity: Double = 1,
+        presentationTime: CFTimeInterval? = nil
     ) {
+        guard let drawable = reservedDrawable else { return }
+        reservedDrawable = nil
+        defer { requestDrawable() }
         guard let commands = queue.makeCommandBuffer() else { return }
         absorbPending(into: commands)
         guard let texture, screenSize.width > 0, screenSize.height > 0 else {
-            commands.commit()
-            return
-        }
-        let drawableStarted = profile == nil ? 0 : CACurrentMediaTime()
-        let next = layer.nextDrawable()
-        if profile != nil {
-            let wait = CACurrentMediaTime() - drawableStarted
-            if wait > 0.025 {
-                Diagnostics.geometry.notice("profile drawable wait: \(wait * 1000, format: .fixed(precision: 2)) ms")
-            }
-        }
-        guard let drawable = next else {
             commands.commit()
             return
         }
@@ -470,7 +493,13 @@ final class DepthRenderer {
             drawable.addPresentedHandler { profile.presented(at: $0.presentedTime) }
             commands.addCompletedHandler { profile.completed(in: $0.gpuEndTime - $0.gpuStartTime) }
         }
-        commands.present(drawable)
+        if let presentationTime {
+            // One frame of headroom keeps small GPU completion differences
+            // from deciding whether this image reaches the current refresh.
+            commands.present(drawable, atTime: presentationTime)
+        } else {
+            commands.present(drawable)
+        }
         commands.commit()
     }
 }

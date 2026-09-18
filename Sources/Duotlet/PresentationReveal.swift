@@ -11,11 +11,7 @@ struct PresentationReveal {
         if beganAt == nil { beganAt = time }
     }
 
-    mutating func restoreForWake(at time: Double) {
-        // The restored geometry is already displaced: fading it in would
-        // expose two desktop positions. Start the return fully opaque.
-        beganAt = time - max(duration, 0.001) - 1
-    }
+    mutating func revealImmediately() { beganAt = -.greatestFiniteMagnitude }
 
     func opacity(at time: Double) -> Double {
         guard let beganAt else { return 0 }

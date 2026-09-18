@@ -22,6 +22,7 @@ final class Preferences: ObservableObject {
         static let showsAngleInMenuBar = "showsAngleInMenuBar"
         static let isLivePicture = "isLivePicture"
         static let sharesAnonymousAnalytics = "sharesAnonymousAnalytics"
+        static let hasCompletedOnboarding = "hasCompletedOnboarding"
 
         static let all = [
             isEnabled, isTimeoutEnabled, thresholdAngle, blurSpan, maxBlurRadius,
@@ -105,10 +106,14 @@ final class Preferences: ObservableObject {
     /// frame that was on screen at the trigger angle.
     let isLivePicture = true
 
-    /// Sends anonymous usage signals so active installs can be counted.
+    /// Kept across settings resets so setup only runs once.
+    @Published private(set) var hasCompletedOnboarding: Bool
+
+    /// Sends anonymous usage and fixed technical failure categories.
     @Published var sharesAnonymousAnalytics: Bool {
         didSet {
             defaults.set(sharesAnonymousAnalytics, forKey: Key.sharesAnonymousAnalytics)
+            Analytics.updateConsent(preferences: self)
             if sharesAnonymousAnalytics {
                 Analytics.signal("Analytics.enabled", preferences: self)
             }
@@ -124,7 +129,7 @@ final class Preferences: ObservableObject {
     /// Highest angle above the threshold at which the pre-warm may run.
     let prewarmCeiling: Double = 70
 
-    /// Closing speed in degrees per second that starts the pre-warm.
+    /// Minimum closing speed in degrees per second that starts an effect.
     let closingSpeed: Double = 8
 
     /// How long the pre-warm runs after the lid stops moving.
@@ -142,12 +147,12 @@ final class Preferences: ObservableObject {
         Key.maxBlurRadius, Key.maxDim, Key.viewingDistance, Key.recession, Key.blurEvenness, Key.dimReach, Key.isLivePicture,
     ]
 
-    private let defaults = UserDefaults.standard
+    private let defaults: UserDefaults
 
     // No inline values on purpose. Swift skips property observers for the
     // assignment that initialises a property.
-    private init() {
-        let defaults = UserDefaults.standard
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
         // Keep existing users' preferences when moving to the public bundle ID.
         if Bundle.main.bundleIdentifier == "app.duotlet.Duotlet",
            !defaults.bool(forKey: "migratedLegacyPreferences") {
@@ -168,6 +173,18 @@ final class Preferences: ObservableObject {
         showsMenuBarIcon = defaults.bool(forKey: Key.showsMenuBarIcon)
         showsAngleInMenuBar = defaults.bool(forKey: Key.showsAngleInMenuBar)
         sharesAnonymousAnalytics = defaults.bool(forKey: Key.sharesAnonymousAnalytics)
+        hasCompletedOnboarding = defaults.bool(forKey: Key.hasCompletedOnboarding)
+    }
+
+    func completeOnboarding(sharingAnalytics: Bool, permission: ScreenCapturePermission? = nil) {
+        // Check again at completion in case access was revoked on the second step.
+        let permission = permission ?? ScreenCapturePermission.shared
+        permission.refresh()
+        guard permission.hasAccess else { return }
+        sharesAnonymousAnalytics = sharingAnalytics
+        hasCompletedOnboarding = true
+        defaults.set(true, forKey: Key.hasCompletedOnboarding)
+        Analytics.startIfAllowed(preferences: self)
     }
 
     func refreshControlState() {

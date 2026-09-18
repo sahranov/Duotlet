@@ -262,22 +262,20 @@ jobs:
       - name: Write release notes
         env:
           BUILD_LABEL: ${{ steps.meta.outputs.label }}
-          DEVELOPER_ID_ENABLED: ${{ vars.DEVELOPER_ID_ENABLED }}
+          DMG_NAME: ${{ steps.meta.outputs.dmg }}
+          ZIP_NAME: ${{ steps.meta.outputs.zip }}
         run: |
           set -euo pipefail
           {
+            DOWNLOAD_BASE="https://github.com/$GITHUB_REPOSITORY/releases/download/$GITHUB_REF_NAME"
+            printf '## Download Duotlet %s\n\n' "$BUILD_LABEL"
+            printf '**[Download for macOS (DMG)](%s/%s)** · [Download ZIP](%s/%s)\n\n' "$DOWNLOAD_BASE" "$DMG_NAME" "$DOWNLOAD_BASE" "$ZIP_NAME"
+            printf 'Universal app for Apple Silicon and Intel. Requires macOS 14+ and a compatible MacBook lid angle sensor.\n\n'
+            printf 'Open the DMG and drag **Duotlet** to **Applications**, or extract the ZIP.\n\n'
             cat RELEASE_NOTES.md
             printf '\n\n'
-            printf '**Duotlet %s**\n\n' "$BUILD_LABEL"
             printf 'Commit: `%s`\n\n' "$GITHUB_SHA"
-            printf 'Open the DMG and drag **Duotlet** to **Applications**, or extract the ZIP.\n\n'
-            printf 'Requires macOS 14 or later and a MacBook with a compatible lid angle sensor.\n'
-            printf 'Includes Apple Silicon and Intel binaries.\n\n'
             printf 'Grant Screen Recording permission when prompted to enable the effect.\n'
-            if [[ "$DEVELOPER_ID_ENABLED" != true ]]; then
-              printf '\nThis build is not notarized by Apple. macOS may block the first launch; review the app before allowing it in Privacy & Security.\n'
-              printf 'The Control Center extension requires Apple signing and is not supported in this build.\n'
-            fi
           } > "$DIST_PATH/NOTES.md"
 
       - name: Publish stable release

@@ -10,7 +10,11 @@ struct DepthEffectControl: ControlWidget {
     var body: some ControlWidgetConfiguration {
         StaticControlConfiguration(kind: ControlState.kind, provider: EffectValueProvider()) { enabled in
             ControlWidgetToggle("Duotlet", isOn: enabled, action: SetDepthEffectIntent()) { isOn in
-                Label(SettingsLanguage.selected.localized(isOn ? "On" : "Off"), systemImage: "laptopcomputer")
+                Label(SettingsLanguage.selected.localized(isOn ? "On" : "Off"), image: "DuotletControlIcon")
+                    .symbolRenderingMode(.hierarchical)
+                    // Keep the fan still when the host changes the toggle state.
+                    .symbolEffectsRemoved()
+                    .contentTransition(.identity)
             }
         }
         .displayName("Duotlet")

@@ -1,13 +1,31 @@
 # Duotlet
 
+## Download
+
+**[Releases and downloads](https://github.com/sahranov/Duotlet/releases)**
+
+The first signed release is being prepared. The download links below will become available when **Duotlet 0.2.0** is published:
+
+| Download | Format |
+| --- | --- |
+| [Duotlet 0.2.0 for macOS](https://github.com/sahranov/Duotlet/releases/download/v0.2.0/Duotlet-0.2.0.dmg) | DMG installer |
+| [Duotlet 0.2.0 ZIP](https://github.com/sahranov/Duotlet/releases/download/v0.2.0/Duotlet-0.2.0.zip) | ZIP archive |
+
+Both packages include Apple Silicon and Intel binaries. Requires **macOS 14+** and a MacBook with a compatible lid angle sensor. Control Center support requires macOS 26+.
+
+Open the DMG and drag **Duotlet** into **Applications**, or extract the ZIP and move Duotlet there. On first launch, follow setup to allow Screen Recording and choose whether to share anonymous analytics.
+
+## About
+
 Duotlet adds a live depth, blur, and dimming effect while closing a compatible MacBook lid.
 
 - A compact menu offers **Turn effect on/off**, **Settings…**, and **Quit Duotlet**.
 - Settings control the effect on/off switch, login launch, Dock visibility, menu bar visibility, angle display, and language.
 - English is the default. Russian and Simplified Chinese are included.
 - Settings and the menu offer **Check for Updates…**. Daily checks notify users about new GitHub releases; installation is manual. See [RELEASING.md](RELEASING.md) for the release process.
-- Live rendering is always enabled. The visual preset is fixed: blur 69 pt, blur spread 0%, dimming 20%, dimming spread 40%, lean 0.5×, perspective slider equivalent 0%.
-- Below 20°, an additional whole-screen fade progressively reaches black at 0°.
+- The first 20° of a closing gesture stay clear; very slow lid adjustments are ignored.
+- Live rendering is always enabled. Blur increases with closing travel and lid angle; dimming begins below 90°.
+- Below 30°, an additional whole-screen fade progressively reaches black at 0°.
 - On macOS 26+, the embedded WidgetKit control turns the effect on/off from Control Center.
 
 The effect requires macOS 14+ and a compatible built-in lid angle sensor. It affects only the built-in display and requires Screen Recording permission. Reopening Duotlet from Applications or Spotlight always opens Settings, even if both icons are hidden. Closing Settings leaves the effect running.
@@ -20,7 +38,7 @@ Use an SDK for macOS 26 or newer. Full Xcode 26+ is recommended.
 ./build.sh
 ```
 
-This packages `output/Duotlet.app` for compile verification. It does not install or launch it. `--universal` includes both Apple Silicon and Intel. Optional `SWIFT`, `SWIFTC`, `SDKROOT`, and `DUOTLET_BUILD_DIR` select an alternate toolchain and build directory.
+This packages `output/Duotlet-build.zip` for compile verification. It does not install or launch it. `--universal` includes both Apple Silicon and Intel. Optional `SWIFT`, `SWIFTC`, `SDKROOT`, and `DUOTLET_BUILD_DIR` select an alternate toolchain and build directory.
 
 `--install` and `--run` require `SIGN_IDENTITY` for a real Apple Development or Developer ID identity. Before replacing `/Applications/Duotlet.app` (or `DUOTLET_BUNDLE`), the installer verifies that the candidate satisfies the existing app's designated requirement and has the same bundle identifier. A mismatch stops installation and leaves the existing app untouched. Backups are kept under `output/app-backups/`.
 
@@ -57,7 +75,7 @@ python3 -m unittest discover -s Tests -p 'test_release*.py'
 bash Tests/run-update-checks.sh
 ```
 
-The standalone checks cover closing/opening motion, reversals, blur, wake restoration, fully opaque initial wake frames, and the final 20° blackout. `swift test` needs full Xcode's Swift Testing module; the Command Line Tools package does not include it.
+The standalone checks cover closing/opening motion, lid adjustments, reversals, blur, wake continuity, the final 30° blackout, onboarding, and analytics consent. `swift test` needs full Xcode's Swift Testing module; the Command Line Tools package does not include it.
 
 For live timing checks, launch with `--profile-animation` and run `Tests/ProfilePreview.swift`. Real first-open and delayed-open sleep cycles still need physical verification; a scripted resume does not reproduce all hardware wake timing.
 

@@ -8,6 +8,9 @@ mkdir -p "$CONTROL_BUNDLE/Contents/MacOS" "$CONTROL_BUNDLE/Contents/Resources"
 cp -R Sources/Duotlet/Resources/*.lproj "$CONTROL_BUNDLE/Contents/Resources/"
 cp Resources/PrivacyInfo.xcprivacy "$CONTROL_BUNDLE/Contents/Resources/"
 cp Resources/Control/Info.plist "$CONTROL_BUNDLE/Contents/Info.plist"
+xcrun actool Resources/Control/Assets.xcassets \
+  --compile "$CONTROL_BUNDLE/Contents/Resources" \
+  --platform macosx --minimum-deployment-target 26.0 --target-device mac
 architectures=("$(uname -m)")
 if [[ "${UNIVERSAL:-false}" == true ]]; then architectures=(arm64 x86_64); fi
 outputs=()

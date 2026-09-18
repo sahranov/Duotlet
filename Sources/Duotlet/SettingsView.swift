@@ -4,7 +4,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @ObservedObject var preferences: Preferences
-    @ObservedObject var controller: LidController
+    let controller: LidController
     @ObservedObject var updater: AppUpdater
     @ObservedObject private var screenPermission = ScreenCapturePermission.shared
 
@@ -28,11 +28,8 @@ struct SettingsView: View {
         Form {
             Section(localized("Effect")) {
                 toggleRow(localized("Depth effect"), isOn: $preferences.isEnabled, help: nil)
-                if controller.isSensorAvailable {
-                    LabeledContent(localized("Lid angle")) {
-                        Text(String(format: "%.1f°", controller.currentAngle)).monospacedDigit()
-                    }
-                } else { unavailableNotice }
+                LidSensorRow(controller: controller, title: localized("Lid angle"),
+                    unavailable: localized("This Mac has no lid angle sensor. Only some MacBook models have one."))
                 if preferences.isEnabled && !screenPermission.hasAccess { permissionNotice }
             }
             Section(localized("General")) {
@@ -50,7 +47,7 @@ struct SettingsView: View {
                 toggleRow(
                     localized("Share anonymous analytics"),
                     isOn: $preferences.sharesAnonymousAnalytics,
-                    help: localized("Helps count active users. No screen content or personal data is sent.")
+                    help: localized("Sends app launches and technical failure types to help fix bugs. No screen content is sent. You can turn this off at any time.")
                 )
                 if let loginError { Text(loginError).foregroundStyle(.red).font(.caption) }
             }
@@ -103,13 +100,6 @@ struct SettingsView: View {
     private func refreshSystemState() {
         screenPermission.refresh()
         launchesAtLogin = SMAppService.mainApp.status == .enabled
-    }
-
-    private var unavailableNotice: some View {
-        Text(localized("This Mac has no lid angle sensor. Only some MacBook models have one."))
-            .font(.callout)
-            .foregroundStyle(.secondary)
-            .fixedSize(horizontal: false, vertical: true)
     }
 
     private func toggleRow(_ title: String, isOn: Binding<Bool>, help: String?) -> some View {
@@ -187,6 +177,27 @@ struct SettingsView: View {
         } catch {
             launchesAtLogin = SMAppService.mainApp.status == .enabled
             loginError = localized("Could not change login settings. Try again in System Settings → General → Login Items.")
+        }
+    }
+}
+
+/// Sensor readings invalidate only this row, not the entire native settings
+/// form on the same main thread that submits the effect's display frames.
+private struct LidSensorRow: View {
+    @ObservedObject var controller: LidController
+    let title: String
+    let unavailable: String
+
+    var body: some View {
+        if controller.isSensorAvailable {
+            LabeledContent(title) {
+                Text(String(format: "%.1f°", controller.currentAngle)).monospacedDigit()
+            }
+        } else {
+            Text(unavailable)
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 }

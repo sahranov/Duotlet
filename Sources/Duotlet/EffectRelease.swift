@@ -7,10 +7,12 @@ struct EffectRelease {
     static let fadeDuration = 0.3
     static let duration = returnDuration + fadeDuration
     let elapsed: Double
+    let motionElapsed: Double
     let progress: Double
 
-    init(elapsed: Double) {
+    init(elapsed: Double, motionElapsed: Double? = nil) {
         self.elapsed = max(elapsed, 0)
+        self.motionElapsed = max(motionElapsed ?? elapsed, 0)
         progress = min(max(elapsed / Self.duration, 0), 1)
     }
 

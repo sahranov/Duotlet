@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Generated from Resources/MenuBarIcon.svg by scripts/generate-control-icon.py. -->
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" width="3300" height="2200">
+  <style>.monochrome-0 {fill:#000000;opacity:0.2}
+.hierarchical-0:primary {fill:#000000;opacity:0.2}
+.monochrome-1 {fill:#000000;opacity:0.4}
+.hierarchical-1:primary {fill:#000000;opacity:0.4}
+.monochrome-2 {fill:#000000;opacity:0.6}
+.hierarchical-2:primary {fill:#000000;opacity:0.6}
+.monochrome-3 {fill:#000000;opacity:1}
+.hierarchical-3:primary {fill:#000000;opacity:1}
+.monochrome-4 {fill:#000000;opacity:1}
+.hierarchical-4:primary {fill:#000000;opacity:1}
+.monochrome-5 {fill:#000000;opacity:1}
+.hierarchical-5:primary {fill:#000000;opacity:1}</style>
+  <g id="Guides">
+    <line id="Baseline-S" x1="263" x2="3036" y1="696" y2="696"/>
+    <line id="Capline-S" x1="263" x2="3036" y1="625.54" y2="625.54"/>
+    <line id="Baseline-M" x1="263" x2="3036" y1="1126" y2="1126"/>
+    <line id="Capline-M" x1="263" x2="3036" y1="1055.54" y2="1055.54"/>
+    <line id="Baseline-L" x1="263" x2="3036" y1="1556" y2="1556"/>
+    <line id="Capline-L" x1="263" x2="3036" y1="1485.54" y2="1485.54"/>
+    <line id="left-margin-Regular-M" x1="1382" x2="1382" y1="1030" y2="1140"/>
+    <line id="right-margin-Regular-M" x1="1508" x2="1508" y1="1030" y2="1140"/>
+  </g>
+  <g id="Symbols">
+    <g id="Regular-M" transform="matrix(6.3 0 0 6.3 1381.76 1028.1)">
+      <path class="monochrome-0 hierarchical-0:primary" d="M9.89126 2.47114L1.87588 16.3542C1.6424 16.7586 1.79378 17.2831 2.214 17.5257C2.63422 17.7683 3.16415 17.6372 3.39763 17.2328L11.413 3.34973C11.6465 2.94533 11.4951 2.42082 11.0749 2.17821C10.6547 1.93559 10.1247 2.06675 9.89126 2.47114Z"/>
+      <path class="monochrome-1 hierarchical-1:primary" d="M13.2227 5.0424L2.08731 16.1778C1.76295 16.5022 1.77814 17.0433 2.12125 17.3864C2.46436 17.7295 3.00545 17.7447 3.32982 17.4203L14.4652 6.2849C14.7896 5.96054 14.7744 5.41945 14.4313 5.07634C14.0882 4.73323 13.5471 4.71803 13.2227 5.0424Z"/>
+      <path class="monochrome-2 hierarchical-2:primary" d="M15.6444 8.30316L2.25131 16.0356C1.86118 16.2609 1.7416 16.7841 1.98421 17.2044C2.22683 17.6246 2.73976 17.7826 3.12989 17.5574L16.523 9.82491C16.9131 9.59967 17.0327 9.07642 16.79 8.6562C16.5474 8.23599 16.0345 8.07792 15.6444 8.30316Z"/>
+      <path class="monochrome-3 hierarchical-3:primary" d="M16.8682 11.9981L2.40491 15.8735C1.94991 15.9954 1.69101 16.5046 1.82664 17.0108C1.96227 17.517 2.44108 17.8285 2.89608 17.7066L17.3594 13.8311C17.8144 13.7092 18.0733 13.2 17.9376 12.6939C17.802 12.1877 17.3232 11.8761 16.8682 11.9981Z"/>
+      <path class="monochrome-4 hierarchical-4:primary" d="M16.8756 12.0232L2.4123 15.8987C1.96994 16.0172 1.71823 16.5122 1.85009 17.0044C1.98196 17.4965 2.44746 17.7993 2.88983 17.6808L17.3531 13.8054C17.7955 13.6869 18.0472 13.1918 17.9153 12.6997C17.7834 12.2076 17.3179 11.9047 16.8756 12.0232Z"/>
+      <path class="monochrome-5 hierarchical-5:primary" d="M17.6213 15.8162H2.64784C2.17679 15.8162 1.79492 16.241 1.79492 16.765C1.79492 17.2891 2.17679 17.7139 2.64784 17.7139H17.6213C18.0924 17.7139 18.4742 17.2891 18.4742 16.765C18.4742 16.241 18.0924 15.8162 17.6213 15.8162Z"/>
+    </g>
+  </g>
+</svg>

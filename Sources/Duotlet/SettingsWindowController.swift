@@ -13,7 +13,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     init(controller: LidController, preferences: Preferences, updater: AppUpdater) {
         self.preferences = preferences
         self.updater = updater
-        let content = NSHostingController(rootView: SettingsView(
+        let content = NSHostingController(rootView: SetupOrSettingsView(
             preferences: preferences, controller: controller, updater: updater))
         content.sizingOptions = [.preferredContentSize]
         window = NSWindow(contentViewController: content)

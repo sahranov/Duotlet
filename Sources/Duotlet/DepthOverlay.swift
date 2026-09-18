@@ -58,6 +58,7 @@ final class DepthOverlay {
     private var startAngle: Double = 90
     private var geometry = DepthGeometry()
     private var perspectiveMotion = PerspectiveMotion()
+    private var dimmingMotion = DimmingMotion()
     private var gradient = BlurGradient()
     private var tuning = DepthTuning()
     private var fadeIn: TimeInterval = 0.07
@@ -69,17 +70,29 @@ final class DepthOverlay {
     var isPictureReady: Bool { renderer?.isReady ?? false }
     var hostWindow: NSWindow? { window }
 
+    func prepareFrame() -> Bool {
+        guard window != nil, let renderer, renderer.isReady else { return false }
+        return renderer.prepareFrame()
+    }
+
     func beginRelease() {
         perspectiveMotion.beginRelease()
+        dimmingMotion.beginRelease()
         presentationOpacity.beginRelease()
     }
 
-    func restoreGeometry(angle: Double, startAngle: Double, tuning: DepthTuning) {
-        revealEnvelope.restoreForWake(at: CACurrentMediaTime())
+    /// Continue a retained surface from its last rendered shape and brightness.
+    /// A newly created surface starts at the current sensor pose instead.
+    func alignForWake(angle: Double, startAngle: Double, tuning: DepthTuning,
+                      preservingPresentation: Bool = false) {
+        revealEnvelope.revealImmediately()
+        dimmingMotion.prepareForWake(target: ClosingDimming(angle: angle, startAngle: startAngle, maximum: tuning.maxDim),
+                                    preservingPresentation: preservingPresentation)
         let corners = geometry.corners(startAngle: startAngle, currentAngle: angle,
             viewingDistanceRatio: tuning.viewingDistance, recession: tuning.recession,
             screenSize: screenSize)
-        perspectiveMotion.reset(to: screenSize.width > 0 ? corners[3].x / screenSize.width : 0)
+        perspectiveMotion.prepareForWake(margin: screenSize.width > 0 ? corners[3].x / screenSize.width : 0,
+                                        preservingPresentation: preservingPresentation)
     }
 
     @discardableResult
@@ -228,6 +241,7 @@ final class DepthOverlay {
         revealEnvelope = PresentationReveal(duration: fadeIn)
         presentationOpacity = PresentationOpacity()
         perspectiveMotion.reset()
+        dimmingMotion.reset()
         self.window = window
     }
 
@@ -241,13 +255,12 @@ final class DepthOverlay {
 
     func update(progress: Double, currentAngle: Double, tuning: DepthTuning, geometryStrength: Double = 1,
                 geometryAngle: Double? = nil, geometryStart: Double? = nil, releaseOpacity: Double? = nil,
-                dt: Double = 0, release: EffectRelease? = nil) {
-        guard let renderer, renderer.isReady else { return }
+                dt: Double = 0, release: EffectRelease? = nil, presentationTime: CFTimeInterval? = nil) {
+        guard let renderer, renderer.isReady, prepareFrame() else { return }
         self.tuning = tuning
-        let transition = min(max((currentAngle - 70) / 10, 0), 1)
-        let blurWeight = 0.35 + 0.65 * transition * transition * (3 - 2 * transition)
-        let dim = ClosingDimming(angle: currentAngle, progress: progress,
-            maximum: tuning.maxDim, releaseStrength: geometryStrength)
+        let dim = dimmingMotion.advance(to: ClosingDimming(
+            angle: geometryAngle ?? currentAngle, startAngle: geometryStart ?? startAngle,
+            maximum: tuning.maxDim), dt: dt, release: release)
         let presentedOpacity = presentationOpacity.advance(release: releaseOpacity, dt: dt)
         let opacity = revealEnvelope.opacity(at: CACurrentMediaTime()) * presentedOpacity
         // Display-link callbacks can run back-to-back without the run loop
@@ -267,9 +280,9 @@ final class DepthOverlay {
             hingeFloor: tuning.blurEvenness,
             dimHingeFloor: dim.hingeFloor,
             dimReach: tuning.dimReach,
-            maxBlurRadius: tuning.maxBlurRadius * blurWeight,
+            maxBlurRadius: tuning.maxBlurRadius * BlurGradient.radiusScale,
             maxDim: dim.maximum,
-            opacity: opacity
+            opacity: opacity, presentationTime: presentationTime
         ) }
         if hasRevealed {
             // Opacity belongs to the same GPU frame as geometry and dimming.

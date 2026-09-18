@@ -12,6 +12,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     private var subscriptions = Set<AnyCancellable>()
     private var titleTimer: Timer?
     private let effectItem = NSMenuItem()
+    private let angleItem = NSMenuItem()
     private let permissionItem = NSMenuItem()
     private let settingsItem = NSMenuItem()
     private let quitItem = NSMenuItem()
@@ -36,6 +37,8 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         quitItem.action = #selector(NSApplication.terminate(_:))
         quitItem.keyEquivalent = "q"
         menu.addItem(effectItem)
+        angleItem.isEnabled = false
+        menu.addItem(angleItem)
         permissionItem.isEnabled = false
         menu.addItem(permissionItem)
         menu.addItem(.separator())
@@ -59,6 +62,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     deinit { titleTimer?.invalidate() }
 
     func menuWillOpen(_ menu: NSMenu) {
+        refreshTitle()
         let language = SettingsLanguage.selected
         ScreenCapturePermission.shared.refresh()
         let paused = preferences.isEnabled && !ScreenCapturePermission.shared.hasAccess
@@ -77,6 +81,9 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     private func refreshTitle() {
         statusItem.button?.title = preferences.showsAngleInMenuBar
             ? String(format: " %.0f°", controller.currentAngle) : ""
+        let angle = controller.isSensorAvailable && controller.currentAngle.isFinite
+            ? String(format: "%.0f°", controller.currentAngle) : "—"
+        angleItem.title = "\(SettingsLanguage.selected.localized("Lid angle")): \(angle)"
     }
 
     private static var fallbackResources: Bundle {

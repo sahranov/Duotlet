@@ -1,6 +1,6 @@
 import Metal
 
-/// Keep the original screen sharp. Only the blurred image uses half-sized
+/// Keep the original screen sharp. Only the blurred image uses quarter-sized
 /// working buffers; the fragment shader smoothly selects the original for
 /// blur radii too small to justify resampling.
 final class DepthBlur {
@@ -26,8 +26,8 @@ final class DepthBlur {
         // full-buffer passes here would contribute exactly zero to the frame.
         let maximumSigma = 0.5 * uniforms.paddedAndBlur.z * uniforms.paddedAndBlur.w
         guard maximumSigma > 0.4 else { return source }
-        let width = (source.width + 1) / 2
-        let height = (source.height + 1) / 2
+        let width = (source.width + 3) / 4
+        let height = (source.height + 3) / 4
         if vertical?.width != width || vertical?.height != height {
             let descriptor = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .rgba16Float,
                 width: width, height: height, mipmapped: false)
@@ -46,7 +46,7 @@ final class DepthBlur {
         reduction.endEncoding()
 
         var working = uniforms
-        working.paddedAndBlur.z *= 0.5
+        working.paddedAndBlur.z *= 0.25
         for stage in 0..<6 {
             var axis = UInt32(stage % 2)
             var segmentLength: UInt32 = 32

@@ -2,7 +2,7 @@
 #
 # Builds Duotlet.app from the SwiftPM package.
 #
-#   ./build.sh            package output/Duotlet.app without installing or launching
+#   ./build.sh            archive output/Duotlet-build.zip without installing or launching
 #   ./build.sh --install  install with a stable Apple signing identity
 #   ./build.sh --run      install with a stable identity, then relaunch
 #   ./build.sh --universal  include Apple Silicon and Intel
@@ -74,10 +74,20 @@ if [[ "$SIGN_IDENTITY" == - ]]; then
   TIMESTAMP=--timestamp=none
 fi
 codesign --force --options runtime "$TIMESTAMP" --sign "$SIGN_IDENTITY" \
+  "$BUNDLE/Contents/MacOS/lidprobe"
+codesign --force --options runtime "$TIMESTAMP" --sign "$SIGN_IDENTITY" \
   --entitlements Resources/Control/DuotletControl.entitlements "$BUNDLE/Contents/PlugIns/DuotletControl.appex"
 codesign --force --options runtime "$TIMESTAMP" --sign "$SIGN_IDENTITY" \
   --entitlements Resources/Duotlet.entitlements "$BUNDLE"
 codesign --verify --strict --verbose=1 "$BUNDLE"
+
+if ! "$INSTALL_APP"; then
+  mkdir -p output
+  ditto -c -k --sequesterRsrc --keepParent "$BUNDLE" "output/${APP_NAME}-build.zip"
+  rm -rf "$(dirname "$STAGING")"
+  echo "built output/${APP_NAME}-build.zip (not installed or launched)"
+  exit 0
+fi
 
 if "$INSTALL_APP"; then
   python3 scripts/verify-install-identity.py "$BUNDLE" "$DESTINATION"
@@ -86,7 +96,7 @@ mkdir -p "$(dirname "$DESTINATION")"
 # Keep one recoverable copy when replacing an existing installation.
 if [[ -d "$DESTINATION" ]]; then
   mkdir -p output/app-backups
-  ditto "$DESTINATION" "output/app-backups/Duotlet-$(date +%Y%m%d-%H%M%S).app"
+  ditto -c -k --sequesterRsrc --keepParent "$DESTINATION" "output/app-backups/Duotlet-$(date +%Y%m%d-%H%M%S).zip"
 fi
 rm -rf "$DESTINATION"
 ditto "$BUNDLE" "$DESTINATION"

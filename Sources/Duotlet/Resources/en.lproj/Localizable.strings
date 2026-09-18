@@ -64,3 +64,17 @@
 "Effect paused — screen access required" = "Effect paused — screen access required";
 "Allow Screen Recording" = "Allow Screen Recording";
 "Duotlet needs access to your screen to display the effect. Allow Screen Recording to continue." = "Duotlet needs access to your screen to display the effect. Allow Screen Recording to continue.";
+
+// First launch setup
+"Step 1 of 2" = "Step 1 of 2";
+"Step 2 of 2" = "Step 2 of 2";
+"Allow screen access" = "Allow screen access";
+"Help improve Duotlet" = "Help improve Duotlet";
+"Duotlet uses your screen image to create the depth effect when you close the lid. Without this access, the effect cannot work." = "Duotlet uses your screen image to create the depth effect when you close the lid. Without this access, the effect cannot work.";
+"Anonymous analytics helps find and fix bugs in Duotlet." = "Anonymous analytics helps find and fix bugs in Duotlet.";
+"Your screen image stays on your Mac. It is never sent anywhere." = "Your screen image stays on your Mac. It is never sent anywhere.";
+"Screen access allowed" = "Screen access allowed";
+"In System Settings, enable Duotlet under Screen Recording, then return here. If macOS asks you to restart Duotlet, reopen it to continue." = "In System Settings, enable Duotlet under Screen Recording, then return here. If macOS asks you to restart Duotlet, reopen it to continue.";
+"Sends app launches and technical failure types to help fix bugs. No screen content is sent. You can turn this off at any time." = "Sends app launches and technical failure types to help fix bugs. No screen content is sent. You can turn this off at any time.";
+"Back" = "Back";
+"Next" = "Next";

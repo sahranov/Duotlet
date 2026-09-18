@@ -64,3 +64,17 @@
 "Effect paused — screen access required" = "Эффект приостановлен — нет доступа к экрану";
 "Allow Screen Recording" = "Разрешить запись экрана";
 "Duotlet needs access to your screen to display the effect. Allow Screen Recording to continue." = "Для эффекта нужен доступ к изображению экрана. Разрешите запись экрана, чтобы включить эффект.";
+
+// First launch setup
+"Step 1 of 2" = "Шаг 1 из 2";
+"Step 2 of 2" = "Шаг 2 из 2";
+"Allow screen access" = "Разрешите доступ к экрану";
+"Help improve Duotlet" = "Помогите улучшить Duotlet";
+"Duotlet uses your screen image to create the depth effect when you close the lid. Without this access, the effect cannot work." = "Duotlet использует изображение экрана для эффекта глубины при закрытии крышки. Без этого доступа эффект не работает.";
+"Anonymous analytics helps find and fix bugs in Duotlet." = "Анонимная аналитика помогает находить и исправлять ошибки в Duotlet.";
+"Your screen image stays on your Mac. It is never sent anywhere." = "Изображение экрана остаётся на вашем Mac и никуда не отправляется.";
+"Screen access allowed" = "Доступ к экрану разрешён";
+"In System Settings, enable Duotlet under Screen Recording, then return here. If macOS asks you to restart Duotlet, reopen it to continue." = "Разрешите Duotlet запись экрана в системных настройках и вернитесь сюда. Если macOS попросит перезапустить Duotlet, откройте его снова.";
+"Sends app launches and technical failure types to help fix bugs. No screen content is sent. You can turn this off at any time." = "Отправляет данные о запусках приложения и типах сбоев, чтобы помогать исправлять ошибки. Содержимое экрана не отправляется. Можно выключить в любой момент в настройках.";
+"Back" = "Назад";
+"Next" = "Далее";

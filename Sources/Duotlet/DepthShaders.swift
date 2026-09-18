@@ -20,7 +20,14 @@ enum DepthShaders {
         if (p.x >= target.get_width() || p.y >= target.get_height()) { return; }
         constexpr sampler linearSampler(filter::linear, address::clamp_to_edge);
         float2 uv = (float2(p) + 0.5) / float2(target.get_width(), target.get_height());
-        target.write(source.sample(linearSampler, uv), p);
+        // Four bilinear samples average all 16 native pixels of each 4x4
+        // footprint, preserving thin lines instead of skipping them.
+        float2 offset = 0.25 / float2(target.get_width(), target.get_height());
+        float4 colour = source.sample(linearSampler, uv + float2(-offset.x, -offset.y))
+            + source.sample(linearSampler, uv + float2(offset.x, -offset.y))
+            + source.sample(linearSampler, uv + float2(-offset.x, offset.y))
+            + source.sample(linearSampler, uv + offset);
+        target.write(colour * 0.25, p);
     }
 
     float4 linePixel(texture2d<float, access::sample> source, uint line, int index, uint axis) {

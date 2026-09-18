@@ -9,8 +9,7 @@ import Foundation
         for angle in [90.0, 65, 49, 42, 55, 48, 58, 45, 60, 49, 40, 55] {
             time += 1.0 / 60
             let active = policy.update(angle: angle, at: time)
-            let span = max(policy.startAngle - 50, 1)
-            let target = active ? min(max((policy.startAngle - angle) / span, 0), 1) : 0
+            let target = active ? BlurGradient.closingProgress(angle: angle, startAngle: policy.startAngle) : 0
             let before = envelope.value
             envelope.advance(target: target, dt: 1.0 / 60)
             if abs(envelope.value - before) > 0.14 { failures += 1 }

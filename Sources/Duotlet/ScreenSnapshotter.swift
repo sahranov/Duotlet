@@ -24,7 +24,13 @@ extension NSScreen {
 @MainActor
 final class ScreenSnapshotter {
 
-    private(set) var latestImage: CGImage?
+    private var capturedImage: CGImage?
+    private var capturedAt: TimeInterval = 0
+    var latestImage: CGImage? {
+        // A cached desktop is only useful as a near-current startup seed.
+        guard ProcessInfo.processInfo.systemUptime - capturedAt <= 0.25 else { return nil }
+        return capturedImage
+    }
     private(set) var latestScreen: NSScreen?
 
     private var filter: SCContentFilter?
@@ -61,7 +67,7 @@ final class ScreenSnapshotter {
 
     /// Drops the held screenshot.
     func discard() {
-        latestImage = nil
+        capturedImage = nil
         latestScreen = nil
     }
 
@@ -124,7 +130,8 @@ final class ScreenSnapshotter {
             )
             guard !Task.isCancelled else { return }
             let elapsed = (CFAbsoluteTimeGetCurrent() - started) * 1000
-            latestImage = image
+            capturedImage = image
+            capturedAt = ProcessInfo.processInfo.systemUptime
             latestScreen = screen
             Diagnostics.geometry.debug("captureImage took \(elapsed, format: .fixed(precision: 1)) ms")
             let geometry = String(

@@ -52,8 +52,13 @@ final class LidController: ObservableObject {
     private var startedAt: CFTimeInterval = 0
     private var preview: PreviewRun?
     private var isSuspended = false
-    private var wakeRestoration = WakeEffectRestoration()
-    private var isAwaitingWakePicture = false
+    private var effectSession = EffectSession()
+    private var sensorSession = EffectSession()
+    private var lastLiveFrame: CapturedFrame?
+    private var wakeFrame: CapturedFrame?
+    private var wakeBlur = 0.0
+    private var wakeLayout = Layout()
+    private var wakePresentation = WakePresentation()
     private var isCapturePending = false
     private var motionPolicy = AdaptiveLidPolicy()
     /// Frozen for a run, including its ease back to the unmodified screen.
@@ -63,7 +68,8 @@ final class LidController: ObservableObject {
     private var releaseBlur = 0.0
     /// True while `beginClosingOut()` is easing the picture back to flat.
     private var isClosingOut = false
-    private var closingOutStartedAt: CFTimeInterval = 0
+    private var openingRelease: OpeningRelease?
+    private var captureIdleUntil: CFTimeInterval = 0
     private var builtInLayout = Layout()
 
     private static let idlePollInterval: TimeInterval = 1.0 / 8
@@ -90,6 +96,22 @@ final class LidController: ObservableObject {
         /// `nil` once the run is over.
         func angle(at now: CFTimeInterval) -> Double? {
             let elapsed = now - startedAt
+            if scenario == "slow-opening" {
+                let points: [(Double, Double)] = [(0, open), (0.5, 12),
+                    (0.7, 12), (3.2, 70), (3.4, 70)]
+                for (a, b) in zip(points, points.dropFirst()) where elapsed < b.0 {
+                    return a.1 + (b.1 - a.1) * max((elapsed - a.0) / (b.0 - a.0), 0)
+                }
+                return nil
+            }
+            if scenario == "fast" {
+                let points: [(Double, Double)] = [(0, open), (0.08, open - 35),
+                    (0.65, open - 35), (0.8, open)]
+                for (a, b) in zip(points, points.dropFirst()) where elapsed < b.0 {
+                    return a.1 + (b.1 - a.1) * max((elapsed - a.0) / (b.0 - a.0), 0)
+                }
+                return nil
+            }
             if scenario == "reversals" || scenario == "shallow" {
                 let points: [(Double, Double)] = scenario == "shallow"
                     ? [(0, open), (0.6, open - 28), (0.7, open - 28), (1.2, open)]
@@ -182,20 +204,35 @@ final class LidController: ObservableObject {
         stopEffectAndCapture()
     }
 
-    private func stopEffectAndCapture(preserveWakeEffect: Bool = false) {
-        if !preserveWakeEffect { wakeRestoration.clear() }
-        isAwaitingWakePicture = false
+    private func stopEffectAndCapture(preserveWakePicture: Bool = false) {
+        if !preserveWakePicture {
+            wakeFrame = nil
+            wakePresentation.clear()
+        }
+        lastLiveFrame = nil
+        effectSession.invalidate()
+        sensorSession.invalidate()
+        lastChangedAngle = nil
+        angularVelocity = 0
+        lastClosingTime = -.greatestFiniteMagnitude
+        openingRelease = nil
         blurEnvelope.reset()
         motionPolicy.reset()
         pictureTask?.cancel()
         pictureTask = nil
         isCapturePending = false
         isClosingOut = false
+        captureIdleUntil = 0
         stopDisplayLink()
-        overlay.dismiss(animated: false)
+        // Keep the last presented surface across sleep so WindowServer does
+        // not uncover the desktop while the process is resuming. All motion
+        // and capture are stopped; wake continues from the retained presentation.
+        let keepSurface = preserveWakePicture && wakeFrame != nil && overlay.isPictureReady
+            && NSScreen.builtIn?.displayID == wakeLayout.displayID
+        if !keepSurface { overlay.dismiss(animated: false) }
         snapshotter.stop()
         streamer.stop()
-        overlay.discardLive()
+        if !keepSurface { overlay.discardLive() }
         preview = nil
         isActive = false
     }
@@ -248,11 +285,13 @@ final class LidController: ObservableObject {
         } else {
             guard !sensorReadPending else { return }
             sensorReadPending = true
+            let generation = sensorSession.generation
             sensorReader.sample { [weak self] read in
                 MainActor.assumeIsolated {
                     guard let self else { return }
                     self.sensorReadPending = false
-                    guard !self.isSuspended, self.pollTimer != nil, self.preview == nil else { return }
+                    guard self.sensorSession.accepts(generation), !self.isSuspended,
+                          self.pollTimer != nil, self.preview == nil else { return }
                     self.consumeSensor(read)
                 }
             }
@@ -297,33 +336,19 @@ final class LidController: ObservableObject {
 
     private func wantsEffect(angle: Double) -> Bool {
         guard preferences.isEnabled, builtInLayout.displayID != nil else { return false }
-        return motionPolicy.update(angle: angle, at: CACurrentMediaTime())
+        return motionPolicy.update(angle: angle, at: CACurrentMediaTime(), closingSpeed: preferences.closingSpeed)
     }
 
     /// Brings the screen in line with `wantsEffect` on every sample. A run
     /// whose screenshot failed is retried here.
     private func reconcile(angle: Double) {
         guard preferences.isEnabled, !isSuspended else { return }
-        if isAwaitingWakePicture {
-            if preferences.isLivePicture { streamer.start() }
-            if !isCapturePending {
-                if !overlay.isVisible { presentPicture() }
-                else if preferences.isLivePicture, !overlay.isPictureReady { requestSeed() }
-            }
-            return
-        }
-        if wakeRestoration.pending != nil {
-            guard let restored = wakeRestoration.take(
-                screenReady: NSScreen.builtIn != nil && snapshotter.hasPermission,
-                enabled: preferences.isEnabled) else { return }
-            effectStartAngle = restored.startAngle
-            visualAngle.reset(to: restored.angle)
-            blurEnvelope.restore(restored.blur)
-            isActive = true
-            isAwaitingWakePicture = true
-            if preferences.isLivePicture { streamer.start() }
-            presentPicture()
-            return
+        if wakePresentation.startAngle != nil {
+            if presentCachedWake(angle: angle) { return }
+            if wakePresentation.startAngle != nil { return }
+            wakeFrame = nil
+            overlay.dismiss(animated: false)
+            overlay.discardLive()
         }
         let wanted = wantsEffect(angle: angle)
         if isClosingOut {
@@ -339,6 +364,7 @@ final class LidController: ObservableObject {
                 \(wanted ? "start" : "end", privacy: .public) raw \(angle, format: .fixed(precision: 2)) \
                 predicted \(self.predictedAngle(), format: .fixed(precision: 2)) \
                 velocity \(self.angularVelocity, format: .fixed(precision: 1)) deg/s \
+                closing average \(self.motionPolicy.closingVelocity, format: .fixed(precision: 1)) deg/s \
                 snapshot \(self.snapshotter.latestImage != nil)
                 """
             )
@@ -382,14 +408,15 @@ final class LidController: ObservableObject {
         }
     }
 
-    /// Runs only while the lid is closing, so holding it still does not leave
-    /// a capture loop running.
+    /// Keep capture ready briefly between gestures, then stop it at rest.
     private func updatePrewarm(angle: Double, ceiling: Double) {
         let closingRecently = CACurrentMediaTime() - lastClosingTime < preferences.prewarmLinger
         guard angle <= ceiling, closingRecently else {
             snapshotter.endPrewarm()
-            streamer.stop()
-            overlay.discardLive()
+            if CACurrentMediaTime() >= captureIdleUntil {
+                streamer.stop()
+                overlay.discardLive()
+            }
             return
         }
         guard preferences.isLivePicture else {
@@ -451,6 +478,12 @@ final class LidController: ObservableObject {
     /// the effect with the lid still shut would otherwise fade out a warped
     /// picture. `step(_:)` drives the ease and calls `finishClosingOut()`.
     private func beginClosingOut() {
+        // No visible picture means there is nothing to return. A late capture
+        // must not introduce a gesture that has already ended.
+        guard overlay.isPictureReady else {
+            stopEffectAndCapture()
+            return
+        }
         // Nothing to ease before the picture is up, or with no link to draw it.
         guard overlay.isVisible, displayLink != nil else {
             stopDisplayLink()
@@ -461,17 +494,24 @@ final class LidController: ObservableObject {
         overlay.beginRelease()
         releaseBlur = blurEnvelope.value
         releaseAngle = visualAngle.value
-        closingOutStartedAt = CACurrentMediaTime()
+        openingRelease = OpeningRelease(angle: rawAngle, startAngle: effectStartAngle)
     }
 
     private func finishClosingOut() {
+        effectSession.invalidate()
+        pictureTask?.cancel()
+        pictureTask = nil
+        isCapturePending = false
+        snapshotter.stop()
+        openingRelease = nil
         isClosingOut = false
         blurEnvelope.reset()
         stopDisplayLink()
         // The display link has already drawn the zero-opacity final frame.
         overlay.dismiss(animated: false)
-        streamer.stop()
+        captureIdleUntil = CACurrentMediaTime() + 2
         overlay.discardLive()
+        lastLiveFrame = nil
     }
 
     private func endEffect() {
@@ -482,6 +522,7 @@ final class LidController: ObservableObject {
     /// already running counts as that wait.
     private func presentPicture() {
         guard preferences.isEnabled, !isSuspended, isActive else { return }
+        if preferences.isLivePicture { streamer.start() }
         if preferences.isLivePicture, let screen = NSScreen.builtIn,
            overlay.showLive(
                on: screen,
@@ -492,6 +533,7 @@ final class LidController: ObservableObject {
             startDisplayLink()
             if let frame = streamer.newFrame() {
                 Diagnostics.lid.notice("present: live, a stream frame was ready")
+                lastLiveFrame = frame
                 overlay.absorb(frame)
                 return
             }
@@ -513,10 +555,11 @@ final class LidController: ObservableObject {
         }
         isCapturePending = true
         pictureTask?.cancel()
+        let generation = effectSession.generation
         pictureTask = Task { [weak self] in
             guard let self, !Task.isCancelled else { return }
             await self.snapshotter.captureOnce()
-            guard !Task.isCancelled else { return }
+            guard !Task.isCancelled, self.effectSession.accepts(generation) else { return }
             self.pictureTask = nil
             self.isCapturePending = false
             Diagnostics.lid.notice(
@@ -538,10 +581,23 @@ final class LidController: ObservableObject {
         isCapturePending = true
         let started = CACurrentMediaTime()
         pictureTask?.cancel()
+        let generation = effectSession.generation
         pictureTask = Task { [weak self] in
             guard let self, !Task.isCancelled else { return }
-            await self.snapshotter.captureOnce()
+            // Normal live startup already supplies a frame in roughly 60 ms.
+            // Simultaneous screenshot capture competes with it, and converting
+            // that full-resolution seed can block the animation's main thread.
+            // Fall back only if the stream has not supplied a usable picture.
+            try? await Task.sleep(nanoseconds: 180_000_000)
             guard !Task.isCancelled else { return }
+            guard self.effectSession.accepts(generation) else { return }
+            if self.overlay.isPictureReady {
+                self.pictureTask = nil
+                self.isCapturePending = false
+                return
+            }
+            await self.snapshotter.captureOnce()
+            guard !Task.isCancelled, self.effectSession.accepts(generation) else { return }
             self.pictureTask = nil
             self.isCapturePending = false
             Diagnostics.lid.notice(
@@ -551,7 +607,7 @@ final class LidController: ObservableObject {
                 ready \(self.overlay.isPictureReady)
                 """
             )
-            guard self.isActive, !self.overlay.isPictureReady,
+            guard self.isActive || self.isClosingOut, !self.overlay.isPictureReady,
                   let image = self.snapshotter.latestImage else { return }
             self.overlay.seed(image: image)
         }
@@ -570,8 +626,7 @@ final class LidController: ObservableObject {
     }
 
     private func blurProgress(for angle: Double) -> Double {
-        let span = max(effectStartAngle - AdaptiveLidPolicy.closedZone, 1)
-        return min(max((effectStartAngle - angle) / span, 0), 1)
+        BlurGradient.closingProgress(angle: angle, startAngle: effectStartAngle)
     }
 
     // MARK: - Animation
@@ -600,24 +655,36 @@ final class LidController: ObservableObject {
     }
 
     @objc private func step(_ link: CADisplayLink) {
-        let now = CACurrentMediaTime()
+        guard !isSuspended, displayLink === link else { return }
+        let now = link.targetTimestamp
         let rawInterval = now - lastFrameTime
+        if EffectSession.shouldAbandonFrame(after: rawInterval) {
+            Diagnostics.lid.notice("animation discarded after display callback interruption")
+            stopEffectAndCapture()
+            return
+        }
+        if AnimationProfile.enabled, rawInterval > 0.025 {
+            Diagnostics.geometry.notice("profile callback gap: \(rawInterval * 1000, format: .fixed(precision: 2)) ms")
+        }
         let dt = min(max(rawInterval, 1.0 / 240), 1.0 / 20)
         lastFrameTime = now
         if let frame = streamer.newFrame() {
+            // The live stream won the startup race. Cancel its fallback before
+            // a delayed screenshot can survive into the next gesture.
+            if isCapturePending {
+                pictureTask?.cancel()
+                pictureTask = nil
+                isCapturePending = false
+                snapshotter.stop()
+            }
+            lastLiveFrame = frame
             overlay.absorb(frame)
         }
-        if isAwaitingWakePicture {
-            guard overlay.isPictureReady else { return }
-            isAwaitingWakePicture = false
-            overlay.restoreGeometry(angle: visualAngle.value, startAngle: effectStartAngle, tuning: tuning)
-            isActive = false
-            motionPolicy.reset()
-            beginClosingOut()
-            Diagnostics.lid.notice("wake: fresh picture ready, returning saved effect")
-        }
+        // Neither closing nor opening consumes animation time before capture
+        // has supplied a drawable picture. Cold and warm starts follow one path.
+        guard overlay.isPictureReady, overlay.prepareFrame() else { return }
         if isClosingOut {
-            let release = EffectRelease(elapsed: now - closingOutStartedAt)
+            guard let release = openingRelease?.advance(angle: rawAngle, dt: dt) else { return }
             let ease = 1 - release.strength
             let angle = releaseAngle + (effectStartAngle - releaseAngle) * ease
             visualAngle.reset(to: angle)
@@ -625,7 +692,7 @@ final class LidController: ObservableObject {
             overlay.update(progress: blurEnvelope.value, currentAngle: releaseAngle,
                            tuning: tuning, geometryStrength: release.strength,
                            geometryStart: effectStartAngle, releaseOpacity: release.opacity, dt: dt,
-                           release: release)
+                           release: release, presentationTime: now + 1 / 60)
             if release.isFinished { finishClosingOut() }
             return
         }
@@ -633,15 +700,15 @@ final class LidController: ObservableObject {
         visualAngle.advance(to: target, dt: dt)
         blurEnvelope.advance(target: blurProgress(for: rawAngle), dt: dt)
 
-        applyVisual(angle: visualAngle.value, dt: dt)
+        applyVisual(angle: visualAngle.value, dt: dt, presentationTime: now + 1 / 60)
     }
 
     /// The geometry takes the lid angle itself, so only the blur saturates.
-    private func applyVisual(angle: Double, dt: Double) {
+    private func applyVisual(angle: Double, dt: Double, presentationTime: CFTimeInterval) {
         let progress = blurEnvelope.value
         overlay.update(progress: progress, currentAngle: angle, tuning: tuning,
                        geometryAngle: rawAngle,
-                       geometryStart: effectStartAngle, dt: dt)
+                       geometryStart: effectStartAngle, dt: dt, presentationTime: presentationTime)
     }
 
     private var tuning: DepthTuning {
@@ -692,63 +759,94 @@ final class LidController: ObservableObject {
                 )
                 self.builtInLayout = layout
                 if layout.displayID == nil {
-                    self.rememberEffectForWake()
-                    self.stopEffectAndCapture(preserveWakeEffect: true)
-                    self.streamer.invalidateFilter()
-                    self.snapshotter.invalidateFilter()
-                    return
-                }
-                if self.isAwaitingWakePicture {
-                    self.wakeRestoration.remember(angle: self.visualAngle.value,
-                        startAngle: self.effectStartAngle, blur: self.blurEnvelope.value,
-                        closing: true, enabled: self.preferences.isEnabled)
-                }
-                if self.wakeRestoration.pending != nil {
-                    self.stopEffectAndCapture(preserveWakeEffect: true)
+                    self.suspend()
+                } else if self.isSuspended {
+                    self.resume()
+                } else if self.wakePresentation.startAngle != nil {
+                    self.wakePresentation.resume(at: CACurrentMediaTime())
+                    self.poll()
+                } else {
+                    self.stopEffectAndCapture()
                     self.streamer.invalidateFilter()
                     self.snapshotter.invalidateFilter()
                     self.poll()
-                    return
                 }
-                if self.isActive { self.setActive(false) }
-                self.streamer.stop()
-                self.streamer.invalidateFilter()
-                Task { await self.streamer.warmFilter() }
-                self.overlay.discardLive()
-                self.snapshotter.discard()
-                Task { await self.snapshotter.warmFilter() }
             }
         }
     }
 
-    private func suspend() {
-        Diagnostics.lid.notice("suspend")
-        rememberEffectForWake()
-        isSuspended = true
-        stopEffectAndCapture(preserveWakeEffect: true)
+    /// Bridge wake with a frame already in memory, never by waiting for capture.
+    private func presentCachedWake(angle: Double) -> Bool {
+        let now = CACurrentMediaTime()
+        guard let state = wakePresentation.take(angle: angle, at: now,
+            screenReady: NSScreen.builtIn != nil,
+            surfaceRetained: overlay.isVisible && overlay.isPictureReady) else { return false }
+        guard let frame = wakeFrame, let screen = NSScreen.builtIn,
+              wakeLayout == builtInLayout, snapshotter.hasPermission else {
+            wakeFrame = nil
+            return false
+        }
+        wakeFrame = nil
+        let retainedPresentation = overlay.isVisible && overlay.isPictureReady
+        effectStartAngle = state.startAngle
+        visualAngle.reset(to: state.angle)
+        blurEnvelope.restore(retainedPresentation ? wakeBlur : blurProgress(for: state.angle))
+        if !retainedPresentation {
+            guard overlay.showLive(on: screen, startAngle: state.startAngle,
+                                   tuning: tuning, fadeIn: 0) else { return false }
+        }
+        lastLiveFrame = frame
+        overlay.absorb(frame)
+        overlay.alignForWake(angle: state.angle, startAngle: state.startAngle, tuning: tuning,
+                             preservingPresentation: retainedPresentation)
+        startDisplayLink()
+        isActive = false
+        motionPolicy.reset()
+        _ = motionPolicy.update(angle: state.angle, at: now)
+        beginClosingOut()
+        // The first wake frame must match the retained surface exactly.
+        // From this pose, new lid travel drives the rest of the return.
+        let initialRelease = EffectRelease(elapsed: 0, motionElapsed: 0)
+        overlay.update(progress: blurEnvelope.value, currentAngle: state.angle,
+                       tuning: tuning, geometryStart: state.startAngle,
+                       releaseOpacity: initialRelease.opacity, dt: 0, release: initialRelease)
+        streamer.start()
+        Diagnostics.lid.notice("wake: cached picture ready at current angle \(state.angle, format: .fixed(precision: 2))")
+        return true
     }
 
-    private func rememberEffectForWake() {
-        wakeRestoration.remember(angle: rawAngle, startAngle: effectStartAngle,
-            blur: blurEnvelope.value,
-            closing: isActive || (rawAngle < 80 && CACurrentMediaTime() - lastClosingTime < 2),
-            enabled: preferences.isEnabled)
+    private func suspend() {
+        Diagnostics.lid.notice("suspend: retaining last picture, cancelling animation")
+        if !isSuspended {
+            if isActive || isClosingOut, let lastLiveFrame {
+                wakeFrame = lastLiveFrame
+                wakeBlur = blurEnvelope.value
+                // Read from the window: NSScreen may already have disappeared.
+                wakeLayout = Layout(displayID: streamer.screen?.displayID, frame: streamer.screen?.frame)
+                wakePresentation.remember(startAngle: effectStartAngle)
+            }
+        }
+        isSuspended = true
+        stopEffectAndCapture(preserveWakePicture: true)
+        streamer.invalidateFilter()
+        snapshotter.invalidateFilter()
     }
 
     private func resume() {
-        guard isSuspended || wakeRestoration.pending != nil else { poll(); return }
-        Diagnostics.lid.notice("resume")
+        guard isSuspended else { poll(); return }
+        Diagnostics.lid.notice("resume: cached picture available \(self.wakeFrame != nil)")
         isSuspended = false
         builtInLayout = Layout(displayID: NSScreen.builtIn?.displayID, frame: NSScreen.builtIn?.frame)
-        streamer.invalidateFilter()
-        snapshotter.invalidateFilter()
-        // A fresh baseline, so waking with a nearly shut lid does not read as
-        // closing movement.
+        if builtInLayout.displayID != nil {
+            wakePresentation.resume(at: CACurrentMediaTime())
+        }
+        // Sample current hardware position before showing the cached picture.
+        // The previous gesture's timeline and async work remain cancelled.
+        sensorSession.invalidate()
         lastChangedAngle = nil
         angularVelocity = 0
         lastClosingTime = -.greatestFiniteMagnitude
         motionPolicy.reset()
-        isClosingOut = false
         setPollInterval(Self.activePollInterval)
         poll()
     }

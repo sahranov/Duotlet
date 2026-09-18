@@ -23,6 +23,7 @@ for lang in ['en','ru','zh-Hans']:
  p=f'Sources/Duotlet/Resources/{lang}.lproj/Localizable.strings'
  loc.append(add('loc:'+lang,'PBXFileReference',lastKnownFileType='text.plist.strings',name=lang,path=p,sourceTree='SOURCE_ROOT'))
 localized=add('strings','PBXVariantGroup',children=loc,name='Localizable.strings',sourceTree='<group>');children.append(localized);resources.append(localized)
+controlAssets=ref('Resources/Control/Assets.xcassets','folder.assetcatalog');children.append(controlAssets)
 appProduct=add('product:app','PBXFileReference',explicitFileType='wrapper.application',path='Duotlet.app',sourceTree='BUILT_PRODUCTS_DIR')
 extProduct=add('product:extension','PBXFileReference',explicitFileType='wrapper.app-extension',path='DuotletControl.appex',sourceTree='BUILT_PRODUCTS_DIR')
 products=add('products','PBXGroup',children=[appProduct,extProduct],name='Products',sourceTree='<group>')
@@ -44,7 +45,7 @@ extSettings={'PRODUCT_NAME':'DuotletControl','PRODUCT_BUNDLE_IDENTIFIER':'app.du
 appCompile=add('app:sources','PBXSourcesBuildPhase',buildActionMask=2147483647,files=[build('app:'+str(p.relative_to(root)),refs[str(p.relative_to(root))]) for p in app_sources],runOnlyForDeploymentPostprocessing=0)
 extCompile=add('ext:sources','PBXSourcesBuildPhase',buildActionMask=2147483647,files=[build('ext:'+p,refs[p]) for p in control_sources],runOnlyForDeploymentPostprocessing=0)
 appRes=add('app:resources','PBXResourcesBuildPhase',buildActionMask=2147483647,files=[build('appres:'+r,r) for r in resources],runOnlyForDeploymentPostprocessing=0)
-extRes=add('ext:resources','PBXResourcesBuildPhase',buildActionMask=2147483647,files=[build('extres',localized),build('extprivacy',uid('file:Resources/PrivacyInfo.xcprivacy'))],runOnlyForDeploymentPostprocessing=0)
+extRes=add('ext:resources','PBXResourcesBuildPhase',buildActionMask=2147483647,files=[build('extres',localized),build('extprivacy',uid('file:Resources/PrivacyInfo.xcprivacy')),build('extassets',controlAssets)],runOnlyForDeploymentPostprocessing=0)
 embed=add('embed','PBXCopyFilesBuildPhase',buildActionMask=2147483647,dstPath='',dstSubfolderSpec=13,files=[build('embed',extProduct,settings={'ATTRIBUTES':['RemoveHeadersOnCopy']})],name='Embed App Extensions',runOnlyForDeploymentPostprocessing=0)
 proxy=add('proxy','PBXContainerItemProxy',containerPortal=uid('project'),proxyType=1,remoteGlobalIDString=uid('extension'),remoteInfo='DuotletControl')
 dep=add('dependency','PBXTargetDependency',target=uid('extension'),targetProxy=proxy)

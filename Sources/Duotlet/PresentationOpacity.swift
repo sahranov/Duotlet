@@ -14,7 +14,10 @@ struct PresentationOpacity {
             value = releaseOrigin! * release
         } else {
             releaseOrigin = nil
-            value += (1 - value) * (1 - exp(-dt / 0.12))
+            // Release opacity falls only after geometry, blur and dimming are
+            // neutral. Reclosing can make that identical picture opaque before
+            // deforming it; fading it back in would expose two desktop positions.
+            value = 1
         }
         return value
     }

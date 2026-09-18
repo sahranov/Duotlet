@@ -44,7 +44,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let isLogin = NSAppleEventManager.shared().currentAppleEvent?
             .paramDescriptor(forKeyword: keyAEPropData)?.enumCodeValue == keyAELaunchedAsLogInItem
         let needsPermission = preferences.isEnabled && !ScreenCapturePermission.shared.hasAccess
-        if !isLogin && (!CommandLine.arguments.contains("--background") || needsPermission) {
+        if !preferences.hasCompletedOnboarding || (!isLogin && (!CommandLine.arguments.contains("--background") || needsPermission)) {
             settings.show()
         }
         controller.start()

@@ -13,6 +13,7 @@ import Foundation
             var opacity = PresentationOpacity()
             _ = opacity.advance(release: 0.2, dt: dt)
             let before = opacity.advance(release: nil, dt: dt)
+            check(before == 1, "reclosing must not warp a translucent desktop")
             opacity.beginRelease()
             check(abs(opacity.advance(release: 1, dt: dt) - before) < 1e-12,
                   "opacity jumps on a second opening at \(fps) Hz")

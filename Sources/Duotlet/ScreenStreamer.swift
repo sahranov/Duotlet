@@ -100,8 +100,8 @@ final class ScreenStreamer {
 
     /// Begins capturing, or does nothing if it is already running.
     func start() {
-        guard CGPreflightScreenCaptureAccess() else { return }
         guard !isStarted, startTask == nil, device != nil else { return }
+        guard CGPreflightScreenCaptureAccess() else { return }
         guard let target = NSScreen.builtIn, let displayID = target.displayID else { return }
         screen = target
         isStarted = true
@@ -157,6 +157,7 @@ final class ScreenStreamer {
         receiver.onStop = { [weak self] stopped in
             Task { @MainActor [weak self] in
                 guard let self, self.stream === stopped else { return }
+                Analytics.failure(.captureStopped)
                 self.stop()
                 self.invalidateFilter()
             }
@@ -205,6 +206,7 @@ final class ScreenStreamer {
         } catch {
             guard !Task.isCancelled else { return }
             Diagnostics.geometry.error("stream failed: \(String(describing: error), privacy: .public)")
+            Analytics.failure(.captureStart)
             invalidateFilter()
             isStarted = false
         }
@@ -237,6 +239,7 @@ final class ScreenStreamer {
         } catch {
             guard !Task.isCancelled else { return }
             Diagnostics.geometry.error("stream filter failed: \(String(describing: error), privacy: .public)")
+            Analytics.failure(.captureFilter)
             invalidateFilter()
         }
     }
