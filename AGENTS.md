@@ -10,7 +10,8 @@
 - Installation requires a real Apple signing identity and a successful `scripts/verify-install-identity.py` check against the existing installation. Keep bundle identifier and signing team consistent across updates.
 - Before replacing an installed build, verify the new build satisfies the old build's designated requirement. Successful compilation or ordinary signature verification alone is insufficient.
 - If the required signing identity is unavailable or continuity fails, finish compilation/tests in the workspace and report the signing blocker. Leave the installed app and its permissions untouched.
-- Public release workflows must fail closed when Developer ID signing is unavailable. Do not add an ad-hoc fallback to GitHub releases or update downloads.
+- Stable release workflows must fail closed when Developer ID signing is unavailable. Do not silently fall back to ad-hoc signing or offer ad-hoc builds through stable update downloads.
+- On 2026-09-18 the user explicitly approved a public experimental release without Apple signing or notarization. Package it through `scripts/package-experimental.sh`, label it as a GitHub prerelease, and explain Gatekeeper, Screen Recording update limitations, and the absence of Control Center support. This exception permits publishing archives only; it does not permit installing or launching an ad-hoc build over the user's installed app, changing TCC, or weakening installation continuity checks.
 - Moving from a historical ad-hoc identity to a proper release identity is a separate, explicitly planned one-time migration; never silently perform it during a UI fix or ordinary update.
 - Do not claim the installed app or screen-capture effect is fixed merely because the staged build or regression tests pass. State what remains unverified.
 

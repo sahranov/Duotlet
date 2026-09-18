@@ -4,16 +4,20 @@
 
 **[Releases and downloads](https://github.com/sahranov/Duotlet/releases)**
 
-The first signed release is being prepared. The download links below will become available when **Duotlet 0.2.0** is published:
+**Duotlet 0.2.0 — Experimental** · No paid Apple developer account is needed to download this build.
+
+This prerelease is ad-hoc signed and is **not notarized by Apple**. Read the [installation instructions and limitations](EXPERIMENTAL.md) before installing.
 
 | Download | Format |
 | --- | --- |
-| [Duotlet 0.2.0 for macOS](https://github.com/sahranov/Duotlet/releases/download/v0.2.0/Duotlet-0.2.0.dmg) | DMG installer |
-| [Duotlet 0.2.0 ZIP](https://github.com/sahranov/Duotlet/releases/download/v0.2.0/Duotlet-0.2.0.zip) | ZIP archive |
+| [Duotlet 0.2.0 for macOS](https://github.com/sahranov/Duotlet/releases/download/v0.2.0-experimental.1/Duotlet-0.2.0.dmg) | DMG installer |
+| [Duotlet 0.2.0 ZIP](https://github.com/sahranov/Duotlet/releases/download/v0.2.0-experimental.1/Duotlet-0.2.0.zip) | ZIP archive |
 
-Both packages include Apple Silicon and Intel binaries. Requires **macOS 14+** and a MacBook with a compatible lid angle sensor. Control Center support requires macOS 26+.
+Both packages include Apple Silicon and Intel binaries. Requires **macOS 14+** and a MacBook with a compatible lid angle sensor. This experimental package uses the menu bar and Settings; it does not include Control Center support.
 
-Open the DMG and drag **Duotlet** into **Applications**, or extract the ZIP and move Duotlet there. On first launch, follow setup to allow Screen Recording and choose whether to share anonymous analytics.
+For a first installation, open the DMG and drag **Duotlet** into **Applications**, or extract the ZIP. If macOS blocks the unidentified developer, use **System Settings → Privacy & Security → Open Anyway** for Duotlet. On first launch, follow setup to allow Screen Recording and choose whether to share anonymous analytics.
+
+**Do not replace an existing Apple-signed Duotlet installation with this experimental build.** Ad-hoc updates may invalidate Screen Recording authorization. This prerelease is not offered through the stable update checker.
 
 ## About
 
@@ -26,7 +30,7 @@ Duotlet adds a live depth, blur, and dimming effect while closing a compatible M
 - The first 20° of a closing gesture stay clear; very slow lid adjustments are ignored.
 - Live rendering is always enabled. Blur increases with closing travel and lid angle; dimming begins below 90°.
 - Below 30°, an additional whole-screen fade progressively reaches black at 0°.
-- On macOS 26+, the embedded WidgetKit control turns the effect on/off from Control Center.
+- Apple-signed native builds on macOS 26+ include a Control Center switch. The experimental download omits this extension.
 
 The effect requires macOS 14+ and a compatible built-in lid angle sensor. It affects only the built-in display and requires Screen Recording permission. Reopening Duotlet from Applications or Spotlight always opens Settings, even if both icons are hidden. Closing Settings leaves the effect running.
 

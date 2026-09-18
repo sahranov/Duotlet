@@ -11,14 +11,20 @@ enum ControlState {
         Bundle.main.object(forInfoDictionaryKey: "DuotletAppGroup") as? String
             ?? "group.app.duotlet.shared"
     }
-    private static var defaults: UserDefaults { UserDefaults(suiteName: groupIdentifier)! }
+    /// Experimental distribution omits the extension and needs no App Group.
+    private static var supportsControlCenter: Bool {
+        Bundle.main.object(forInfoDictionaryKey: "DuotletStandalone") as? Bool != true
+    }
+    private static var defaults: UserDefaults {
+        supportsControlCenter ? UserDefaults(suiteName: groupIdentifier)! : .standard
+    }
 
     static var language: String {
         get { defaults.string(forKey: "settingsLanguage") ?? "en" }
         set {
             defaults.set(newValue, forKey: "settingsLanguage")
             defaults.synchronize()
-            if #available(macOS 26.0, *) { ControlCenter.shared.reloadControls(ofKind: kind) }
+            if supportsControlCenter, #available(macOS 26.0, *) { ControlCenter.shared.reloadControls(ofKind: kind) }
         }
     }
 
@@ -37,7 +43,7 @@ enum ControlState {
         defaults.synchronize()
         DistributedNotificationCenter.default().postNotificationName(
             changed, object: nil, userInfo: nil, deliverImmediately: true)
-        if #available(macOS 26.0, *) {
+        if supportsControlCenter, #available(macOS 26.0, *) {
             ControlCenter.shared.reloadControls(ofKind: kind)
         }
     }

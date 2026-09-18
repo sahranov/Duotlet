@@ -1,5 +1,9 @@
 # Duotlet 0.2.0
 
+The experimental GitHub package is ad-hoc signed, not notarized, and omits
+Control Center. See [EXPERIMENTAL.md](EXPERIMENTAL.md) for installation and update
+limitations. It is a prerelease and is not offered through stable update checks.
+
 ## What's new
 
 - First-launch setup for Screen Recording access and optional anonymous analytics, available in English, Russian, and Simplified Chinese.

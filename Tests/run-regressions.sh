@@ -39,3 +39,4 @@ run OpeningReleaseRegression Sources/Duotlet/OpeningRelease.swift Sources/Duotle
 run OpeningJitterRegression Sources/Duotlet/AdaptiveLidPolicy.swift
 
 bash Tests/run-onboarding-regression.sh
+bash Tests/run-standalone-control-regression.sh
