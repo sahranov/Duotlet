@@ -19,6 +19,12 @@ For a first installation, open the DMG and drag **Duotlet** into **Applications*
 
 **Do not replace an existing Apple-signed Duotlet installation with this experimental build.** Ad-hoc updates may invalidate Screen Recording authorization. This prerelease is not offered through the stable update checker.
 
+## Download analytics
+
+[Download report and history](https://github.com/sahranov/Duotlet/tree/analytics-data) · [Refresh / workflow status](https://github.com/sahranov/Duotlet/actions/workflows/download-analytics.yml)
+
+Public release downloads are recorded daily, with counts by version and file and a CSV export. These are file downloads, not unique people or installations; GitHub does not disclose downloader identities. See [ANALYTICS.md](ANALYTICS.md) for scope and limitations.
+
 ## About
 
 Duotlet adds a live depth, blur, and dimming effect while closing a compatible MacBook lid.
