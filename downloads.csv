@@ -5,3 +5,6 @@ captured_at,asset_id,release,file,downloads,package
 2026-09-21T12:54:27+00:00,572358415,v0.2.0-experimental.1,Duotlet-0.2.0.dmg,1,True
 2026-09-21T12:54:27+00:00,572358774,v0.2.0-experimental.1,Duotlet-0.2.0.zip,2,True
 2026-09-21T12:54:27+00:00,572359116,v0.2.0-experimental.1,SHA256SUMS.txt,1,False
+2026-09-22T11:44:23+00:00,572358415,v0.2.0-experimental.1,Duotlet-0.2.0.dmg,1,True
+2026-09-22T11:44:23+00:00,572358774,v0.2.0-experimental.1,Duotlet-0.2.0.zip,2,True
+2026-09-22T11:44:23+00:00,572359116,v0.2.0-experimental.1,SHA256SUMS.txt,1,False
